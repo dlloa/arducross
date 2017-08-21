@@ -6,6 +6,7 @@
 // - Auto Clear Row/Column in Board[CURRENT] if Board[COMPLETE] has 0 bytes or all xth bits cleared
 // - Increase size of board if playing with 5x5 or 10x10
 // - Better Title Screen
+// - Add more Picross
 
 // Arduboy Stuff
 Arduboy2 arduboy;

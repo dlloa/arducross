@@ -1,2 +1,0 @@
-# arducross
-Picross for Arduboy

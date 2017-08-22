@@ -1,5 +1,5 @@
 <h1>Arducross - Picross for Arduboy</h1>
-Very simple, very early Picross clone that I have been working on for the past couple of days. Currently only has 3 boards, a 5x5, a 10x10, and a 15x15. They're all treated like 15x15 boards, so hints are a little wonky at the moment. It's my first Arduboy project and my first C project in a while so any feedback and suggestions will be greatly appreciated.</br>
+Very simple, very early Picross clone that I have been working on for the past couple of days. Currently only has 3 boards, a 5x5, a 10x10, and a 15x15. It's my first Arduboy project and my first C project in a while so any feedback and suggestions will be greatly appreciated.</br>
 
 **How to Play** </br>
 http://www.thonky.com/picross/

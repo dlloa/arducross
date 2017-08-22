@@ -1,12 +1,12 @@
 #define NUMBEROFBOARDS 3
-const uint16_t LOADEDBOARD[15 * NUMBEROFBOARDS] PROGMEM =
+const uint16_t LOADEDBOARD[16 * NUMBEROFBOARDS] PROGMEM =
 {
   //Ghost 5x5
   14,
   21, 
   31,
   31,
-  21,0,0,0,0,0,0,0,0,0,0,
+  21,0,0,0,0,0,0,0,0,0,0,5, // 15 uint16s for row, 16th for boardsize
 
   //Cat 10x10
   1003,
@@ -19,7 +19,7 @@ const uint16_t LOADEDBOARD[15 * NUMBEROFBOARDS] PROGMEM =
   386,
   3,
   777,
-  0,0,0,0,0,
+  0,0,0,0,0,10,
 
   //Crocodile 15x15
   32736,
@@ -36,5 +36,5 @@ const uint16_t LOADEDBOARD[15 * NUMBEROFBOARDS] PROGMEM =
   1507,
   369,
   24577,
-  31747
+  31747,15
 };

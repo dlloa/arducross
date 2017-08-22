@@ -3,7 +3,7 @@
 
 //TODO
 // - Truncate Hint lists for smaller boards
-// - Auto Clear Row/Column in Board[CURRENT] if Board[COMPLETE] has 0 bytes or all xth bits cleared
+// - Auto Clear Row/Column in Board[CURRENT] if Board[COMPLETE] has values of 0 or all xth bits cleared
 // - Increase size of board if playing with 5x5 or 10x10
 // - Better Title Screen
 // - Add more Picross
@@ -16,22 +16,22 @@ bool DEBUG = false;
 // Board Constants 
 #define BLOCKSIZE 3
 #define BORDERSIZE 1
-#define BOARDSIZE 15 // 15 x 15 Standard Hard Picross Board
+#define MAXBOARDSIZE 16 // 15 x 15 Standard Hard Picross Board // Extra 
 #define REPEATDELAY 4
 
 // displayMode Constants
 #define TITLESCREEN 0 
 #define COMPLETEBOARDHINT 1 // Gameplay - Normal Hints on Left
 #define DEBUGBOARD 2 // Gameplay - Hints for Onscreen Board (CURRENT)
-#define ROWVALUE 3 // Gameplay - Byte Values on Screen
-#define COMPLETEVALUE 4 // Gameplay - Byte Values of Completed Board
+#define ROWVALUE 3 // Gameplay - uint16 Values on Screen
+#define COMPLETEVALUE 4 // Gameplay - uint16 Values of Completed Board
 byte displayMode = TITLESCREEN + DEBUG;
 
 // Board Stuff
 #define COMPLETE 0
 #define CURRENT 1
-uint16_t Board[2][BOARDSIZE];
-byte boardSelect = 0;
+uint16_t Board[2][MAXBOARDSIZE];
+byte boardSelect, boardSize = 0;
 
 // Current Position of the Chisel
 byte xPos, yPos = 0;
@@ -47,16 +47,20 @@ bool gamewon;
 
 void printBoard( byte boardToPrint ){
   gamewon = true;
-  // Iterate through each byte
-  for( byte i = 0; i < BOARDSIZE; i++ ){
+  // Iterate through each uint16
+  for( byte i = 0; i < boardSize; i++ ){
 
-     // Check for completion
-     if( Board[COMPLETE][i] != Board[CURRENT][i] ){
+    // Check for completion
+    // Mask Values with the Board size
+    uint16_t boardmask = 0;
+    boardmask = ~boardmask;
+    boardmask = boardmask >> (16 - boardSize);
+    if( ( boardmask & Board[COMPLETE][i] ) != ( boardmask & Board[CURRENT][i] ) ){
       gamewon = false;
-     }
+    }
 
     //Iterate through each bit, 
-    for( byte j = 0; j < BOARDSIZE; j++ ){
+    for( byte j = 0; j < boardSize; j++ ){
       //Bit = Block
       if( Board[boardToPrint][i] & ( 1 << j ) )
         //If bit exits, displays Block.
@@ -68,9 +72,12 @@ void printBoard( byte boardToPrint ){
 
 // Loads a board from PROGMEM
 void loadBoard( byte toload ){
-  for( byte i = 0; i < BOARDSIZE; i++ ){
+  // Load 16th value for boardsize
+  boardSize = pgm_read_word_near( toload * MAXBOARDSIZE + LOADEDBOARD + 15 );
+
+  for( byte i = 0; i < boardSize; i++ ){
     // PROGMEM read with pgm_read_word_near( )
-    Board[COMPLETE][i] = pgm_read_word_near( (toload * BOARDSIZE ) + LOADEDBOARD + i );
+    Board[COMPLETE][i] = pgm_read_word_near( (toload * MAXBOARDSIZE ) + LOADEDBOARD + i );
   }
 }
 
@@ -82,7 +89,7 @@ void setup() {
   arduboy.setFrameRate(FRAMERATE);
 
   //Fill Current Gameboard = New Game/Reset
-  for ( byte i = 0; i < BOARDSIZE; i++ )
+  for ( byte i = 0; i < MAXBOARDSIZE; i++ )
   {
     Board[CURRENT][i] = 65535 - 32768;
   }
@@ -120,7 +127,7 @@ void loop() {
       }
     }
     if( currButtons & DOWN_BUTTON ){
-      if(  displayMode > TITLESCREEN && !(yPos >= BOARDSIZE - 1) ){
+      if(  displayMode > TITLESCREEN && !(yPos >= boardSize - 1) ){
         yPos++;
       }
     }
@@ -135,7 +142,7 @@ void loop() {
 
     }
     if( currButtons & RIGHT_BUTTON ){
-      if(  displayMode > TITLESCREEN && !(xPos >= BOARDSIZE - 1) ){
+      if(  displayMode > TITLESCREEN && !(xPos >= boardSize - 1) ){
         xPos ++;
       }
 
@@ -155,13 +162,13 @@ void loop() {
     // Flipping piece of the Current Game Board with A/B
     if( currButtons & A_BUTTON ){
       if( displayMode > TITLESCREEN ){
-        //Clears Bit xPos in byte yPos
+        //Clears Bit xPos in uint16 yPos
         Board[CURRENT][yPos] &= ~( 1 << xPos );
       }
     }
     if( currButtons & B_BUTTON ){
       if( displayMode > TITLESCREEN ){
-        //Sets Bit xPos in byte yPos
+        //Sets Bit xPos in uint16 yPos
         Board[CURRENT][yPos] |= ( 1 << xPos );
       }
     }
@@ -280,10 +287,10 @@ void loop() {
           SHOWCURRENTDEBUG = 1;
         }
 
-        for( byte i = 0; i < BOARDSIZE; i++ ){
+        for( byte i = 0; i < boardSize; i++ ){
 
           //Checking Horizontal
-          //Increase if successive bits cleared in a byte
+          //Increase if successive bits cleared in a uint16
           if(!(Board[COMPLETE + SHOWCURRENTDEBUG][yPos] & (1 << i ))){
             addHHint++;
           }
@@ -297,7 +304,7 @@ void loop() {
           }
 
           //Checking Vertical
-          //Same as horizontal, but checks xPos bit on all bytes
+          //Same as horizontal, but checks xPos bit on all uint16
           if( !(Board[COMPLETE + SHOWCURRENTDEBUG][i] & (1 << xPos) ) ){
             addVHint++;
           }
@@ -331,8 +338,12 @@ void loop() {
           }
         }
       }
-      
-      printBoard( CURRENT );
+
+      byte SHOWCOMPLETEDEBUG = 0;
+      if( displayMode == COMPLETEVALUE ){
+        SHOWCOMPLETEDEBUG = 1;
+      }
+      printBoard( CURRENT - SHOWCOMPLETEDEBUG );
       //Draw Cursor with magic numbers
       arduboy.drawRect( ( xPos * 4) + 63, ( yPos * 4 ) , 5, 5, WHITE);
 

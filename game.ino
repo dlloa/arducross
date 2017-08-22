@@ -2,8 +2,8 @@
 #include "boards.h"
 
 //TODO
-// - Truncate Hint lists for smaller boards
-// - Auto Clear Row/Column in Board[CURRENT] if Board[COMPLETE] has values of 0 or all xth bits cleared
+// + Truncate Hint lists for smaller boards
+// + Auto Clear Row/Column in Board[CURRENT] if Board[COMPLETE] has values of 0 or all xth bits cleared
 // - Increase size of board if playing with 5x5 or 10x10
 // - Better Title Screen
 // - Add more Picross
@@ -48,6 +48,14 @@ bool gamewon;
 void printBoard( byte boardToPrint ){
   gamewon = true;
   // Iterate through each uint16
+
+  //Quick add for increasing blocksize for smaller boards
+  byte embiggen = 0;
+  if( boardSize == 5 )
+    embiggen = 7;
+  else if ( boardSize == 10 )
+    embiggen = 2;
+
   for( byte i = 0; i < boardSize; i++ ){
 
     // Check for completion
@@ -64,7 +72,7 @@ void printBoard( byte boardToPrint ){
       //Bit = Block
       if( Board[boardToPrint][i] & ( 1 << j ) )
         //If bit exits, displays Block.
-        arduboy.fillRect( ( j * (BLOCKSIZE + BORDERSIZE)) + 64, (i * (BLOCKSIZE + BORDERSIZE)) + 1, BLOCKSIZE, BLOCKSIZE, WHITE);
+        arduboy.fillRect( ( j * ((BLOCKSIZE + embiggen) + BORDERSIZE)) + 64, (i * ((BLOCKSIZE + embiggen) + BORDERSIZE)) + 1, BLOCKSIZE + embiggen, BLOCKSIZE + embiggen, WHITE);
     }
     
   }
@@ -345,7 +353,15 @@ void loop() {
       }
       printBoard( CURRENT - SHOWCOMPLETEDEBUG );
       //Draw Cursor with magic numbers
-      arduboy.drawRect( ( xPos * 4) + 63, ( yPos * 4 ) , 5, 5, WHITE);
+      byte embiggen = 0;
+
+      //Quick add for smaller boards
+      if( boardSize == 5 )
+        embiggen = 7;
+      else if ( boardSize == 10 )
+        embiggen = 2;
+      
+      arduboy.drawRect( ( xPos * (4 + embiggen)) + 63, ( yPos * (4 + embiggen) ) , 5 + embiggen, 5 + embiggen, WHITE);
 
       break;
     

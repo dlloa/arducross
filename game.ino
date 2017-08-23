@@ -355,11 +355,13 @@ void loop() {
       //Draw Cursor with magic numbers
       byte embiggen = 0;
 
-      //Quick add for smaller boards
-      if( boardSize == 5 )
-        embiggen = 7;
-      else if ( boardSize == 10 )
-        embiggen = 2;
+      //Quick
+      if( boardSize <= 10 ){
+        embiggen += 2;
+      }
+      if( boardSize <= 5 ){
+        embiggen += 5;
+      }
       
       arduboy.drawRect( ( xPos * (4 + embiggen)) + 63, ( yPos * (4 + embiggen) ) , 5 + embiggen, 5 + embiggen, WHITE);
 

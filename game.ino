@@ -4,9 +4,12 @@
 //TODO
 // + Truncate Hint lists for smaller boards
 // + Auto Clear Row/Column in Board[CURRENT] if Board[COMPLETE] has values of 0 or all xth bits cleared
-// - Increase size of board if playing with 5x5 or 10x10
+// + Increase size of board if playing with 5x5 or 10x10
 // - Better Title Screen
 // - Add more Picross
+
+// + Give Up 
+// - Timer
 
 // Arduboy Stuff
 Arduboy2 arduboy;
@@ -16,7 +19,7 @@ bool DEBUG = false;
 // Board Constants 
 #define BLOCKSIZE 3
 #define BORDERSIZE 1
-#define MAXBOARDSIZE 16 // 15 x 15 Standard Hard Picross Board // Extra 
+#define MAXBOARDSIZE 16 // 15 x 15 Standard, 16th is the size of the board
 #define REPEATDELAY 4
 
 // displayMode Constants
@@ -41,6 +44,8 @@ byte currButtons, prevButtons;
 
 // For Quicker Movement
 byte repeatDelay = 0;
+// 
+byte giveupDelay = 0;
 
 // Complete Board Feedback
 bool gamewon;
@@ -51,13 +56,14 @@ void printBoard( byte boardToPrint ){
 
   //Quick add for increasing blocksize for smaller boards
   byte embiggen = 0;
-  if( boardSize == 5 )
-    embiggen = 7;
-  else if ( boardSize == 10 )
-    embiggen = 2;
+  if( boardSize <= 10 ){
+    embiggen += 2;
+  } 
+  if( boardSize <= 5 ){
+    embiggen += 5;
+  }
 
   for( byte i = 0; i < boardSize; i++ ){
-
     // Check for completion
     // Mask Values with the Board size
     uint16_t boardmask = 0;
@@ -74,6 +80,9 @@ void printBoard( byte boardToPrint ){
         //If bit exits, displays Block.
         arduboy.fillRect( ( j * ((BLOCKSIZE + embiggen) + BORDERSIZE)) + 64, (i * ((BLOCKSIZE + embiggen) + BORDERSIZE)) + 1, BLOCKSIZE + embiggen, BLOCKSIZE + embiggen, WHITE);
     }
+
+    //Draw Cursor
+    arduboy.drawRect( ( xPos * (4 + embiggen)) + 63, ( yPos * (4 + embiggen) ) , 5 + embiggen, 5 + embiggen, WHITE);
     
   }
 }
@@ -81,7 +90,7 @@ void printBoard( byte boardToPrint ){
 // Loads a board from PROGMEM
 void loadBoard( byte toload ){
   // Load 16th value for boardsize
-  boardSize = pgm_read_word_near( toload * MAXBOARDSIZE + LOADEDBOARD + 15 );
+  boardSize = pgm_read_word_near( (toload * MAXBOARDSIZE) + LOADEDBOARD + 15 );
 
   for( byte i = 0; i < boardSize; i++ ){
     // PROGMEM read with pgm_read_word_near( )
@@ -95,6 +104,12 @@ void setup() {
   arduboy.begin();
   arduboy.initRandomSeed();
   arduboy.setFrameRate(FRAMERATE);
+
+  // Game Reset
+  displayMode = TITLESCREEN + DEBUG;
+  gamewon = false;
+  xPos = 0;
+  yPos = 0;
 
   //Fill Current Gameboard = New Game/Reset
   for ( byte i = 0; i < MAXBOARDSIZE; i++ )
@@ -124,9 +139,23 @@ void loop() {
   else{
     repeatDelay = 0;
   }
+  // Give up delay, same as above, but for ending a board
+  if( prevButtons == currButtons && (currButtons & A_BUTTON) && (currButtons & B_BUTTON) ){
+    giveupDelay++;
+    //At half a second, give up
+    if( giveupDelay == 20 ){
+      // Give up and show complete board
+      for( byte i = 0; i < boardSize; i++ ){
+        Board[CURRENT][i] = Board[COMPLETE][i];
+      }
+    }
+  }
+  else{
+    giveupDelay = 0;
+  }
   
   // Checks Inputs only if Inputs change, or repeatdelay exceeds max
-  if(( currButtons != prevButtons || repeatDelay > REPEATDELAY ) ){
+  if( ( currButtons != prevButtons || repeatDelay > REPEATDELAY ) ){
 
     // Moving the Cursor // Selecting Board
     if( currButtons & UP_BUTTON ){
@@ -179,9 +208,12 @@ void loop() {
         //Sets Bit xPos in uint16 yPos
         Board[CURRENT][yPos] |= ( 1 << xPos );
       }
+
+
+
     }
 
-    if( currButtons & A_BUTTON || currButtons & B_BUTTON ){
+    if( (currButtons & A_BUTTON || currButtons & B_BUTTON) ){
       
       if( displayMode == TITLESCREEN ){
 
@@ -198,10 +230,19 @@ void loop() {
         } 
       }
 
-      if( gamewon ){
+      if( gamewon && prevButtons == 0 ) {
+
+        // Game Reset
         displayMode = TITLESCREEN + DEBUG;
         gamewon = false;
-        setup();
+        xPos = 0;
+        yPos = 0;
+        //Fill Current Gameboard = New Game/Reset
+        for ( byte i = 0; i < MAXBOARDSIZE; i++ )
+        {
+          Board[CURRENT][i] = 65535 - 32768;
+        }
+        //setup();
       }
 
     }
@@ -352,19 +393,6 @@ void loop() {
         SHOWCOMPLETEDEBUG = 1;
       }
       printBoard( CURRENT - SHOWCOMPLETEDEBUG );
-      //Draw Cursor with magic numbers
-      byte embiggen = 0;
-
-      //Quick
-      if( boardSize <= 10 ){
-        embiggen += 2;
-      }
-      if( boardSize <= 5 ){
-        embiggen += 5;
-      }
-      
-      arduboy.drawRect( ( xPos * (4 + embiggen)) + 63, ( yPos * (4 + embiggen) ) , 5 + embiggen, 5 + embiggen, WHITE);
-
       break;
     
   }

@@ -1,12 +1,46 @@
-#define NUMBEROFBOARDS 3
+#define NUMBEROFBOARDS 8
 const uint16_t LOADEDBOARD[16 * NUMBEROFBOARDS] PROGMEM =
 {
+  //Inverted Plus Sign 3x3
+  5,
+  0,
+  5,0,0,0,0,0,0,0,0,0,0,0,0,3,
+
+  //Plus Sign 3x3
+  2,
+  7,
+  2,0,0,0,0,0,0,0,0,0,0,0,0,3,
+
+  // Circle 4x4
+  6,
+  9,
+  9,
+  6,0,0,0,0,0,0,0,0,0,0,0,4,
+
   //Ghost 5x5
   14,
   21, 
   31,
   31,
   21,0,0,0,0,0,0,0,0,0,0,5, // 15 uint16s for row, 16th for boardsize
+
+  //Boat 6x6
+  39,
+  7,
+  55,
+  32,
+  0,
+  33,0,0,0,0,0,0,0,0,0,6,
+
+  //Penguin 8x8
+  231,
+  225,
+  231,
+  203,
+  203,
+  139,
+  231,
+  195,0,0,0,0,0,0,0,8,
 
   //Cat 10x10
   1003,
@@ -18,8 +52,7 @@ const uint16_t LOADEDBOARD[16 * NUMBEROFBOARDS] PROGMEM =
   192,
   386,
   3,
-  777,
-  0,0,0,0,0,10,
+  777,0,0,0,0,0,10,
 
   //Crocodile 15x15
   32736,

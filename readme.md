@@ -1,5 +1,5 @@
 <h1>Arducross - Picross for Arduboy</h1>
-Very simple, very early Picross clone that I have been working on for the past couple of days. Currently only has 8 boards. It's my first Arduboy project and my first C project in a while so any feedback and suggestions will be greatly appreciated.</br>
+Very simple Picross clone. Currently only has 8 boards. It's my first Arduboy project and my first C project in a while so any feedback and suggestions will be greatly appreciated.</br>
 
 https://community.arduboy.com/t/wip-arducross-picross-for-arduboy/3928
 

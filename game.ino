@@ -63,6 +63,7 @@ void printBoard( byte boardToPrint ){
     embiggen += 5;
   }
 
+  // Print the blocks
   for( byte i = 0; i < boardSize; i++ ){
     // Check for completion
     // Mask Values with the Board size
@@ -76,15 +77,26 @@ void printBoard( byte boardToPrint ){
     //Iterate through each bit, 
     for( byte j = 0; j < boardSize; j++ ){
       //Bit = Block
-      if( Board[boardToPrint][i] & ( 1 << j ) )
+      if( Board[boardToPrint][i] & ( 1 << j ) ){
         //If bit exits, displays Block.
         arduboy.fillRect( ( j * ((BLOCKSIZE + embiggen) + BORDERSIZE)) + 64, (i * ((BLOCKSIZE + embiggen) + BORDERSIZE)) + 1, BLOCKSIZE + embiggen, BLOCKSIZE + embiggen, WHITE);
+      }
+      else{
+        arduboy.drawRect( j* (4 + embiggen) + 63, i * (4 + embiggen), 5 + embiggen, 5 + embiggen, WHITE );
+      }
     }
-
-    //Draw Cursor
-    arduboy.drawRect( ( xPos * (4 + embiggen)) + 63, ( yPos * (4 + embiggen) ) , 5 + embiggen, 5 + embiggen, WHITE);
     
   }
+
+  //Draw Cursor
+  byte paintColor = WHITE;
+  if( !(Board[boardToPrint][yPos] & ( 1 << xPos )) ){
+    paintColor = BLACK;
+  }
+
+  drawDottedSquare(xPos * (4 + embiggen) + 63, yPos * (4 + embiggen) , 4 + embiggen );
+  //arduboy.drawRect( ( xPos * (4 + embiggen)) + 63, ( yPos * (4 + embiggen) ) , 5 + embiggen, 5 + embiggen, paintColor );
+
 }
 
 // Loads a board from PROGMEM
@@ -95,6 +107,20 @@ void loadBoard( byte toload ){
   for( byte i = 0; i < boardSize; i++ ){
     // PROGMEM read with pgm_read_word_near( )
     Board[COMPLETE][i] = pgm_read_word_near( (toload * MAXBOARDSIZE ) + LOADEDBOARD + i );
+  }
+}
+
+void drawDottedSquare( byte x, byte y, byte size ){
+  for( byte i = 0; i < size; i++ ){
+    byte pixelColor = WHITE;
+    if( i % 2 ){
+      pixelColor = BLACK;
+    }
+
+    arduboy.drawPixel( x + i, y, pixelColor);
+    arduboy.drawPixel( x + i, y + size, pixelColor);
+    arduboy.drawPixel( x , y + i, pixelColor);
+    arduboy.drawPixel( x + size, y + i, pixelColor);
   }
 }
 
@@ -224,6 +250,8 @@ void loop() {
 
         //Load Selected board
         else{
+          xPos = 0;
+          yPos = 0;
           loadBoard( boardSelect );
           // Going to Normal Gameplay
           displayMode++;

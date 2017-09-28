@@ -3,11 +3,12 @@
 
 //TODO
 // + Truncate Hint lists for smaller boards
-// + Auto Clear Row/Column in Board[CURRENT] if Board[COMPLETE] has values of 0 or all xth bits cleared
 // + Increase size of board if playing with 5x5 or 10x10
-// - Better Title Screen
-// - Add more Picross
+// ~ Better Title Screen
+// ~ Add more Picross
+// + Saving
 
+// + Pause Menu
 // + Give Up 
 // - Timer
 
@@ -15,6 +16,16 @@
 Arduboy2 arduboy;
 #define FRAMERATE 20
 bool DEBUG = false;
+
+//Arducross Version
+#define VERSION 1
+//EEPROM Addresses for Picross
+#define ESTATUS 0 // Byte for VERSION and SAVED STATUS : VVVVCCCC V=VERSION C=CLEAR/SAVE
+#define EBOARDNUMBER 1 // Byte for Board Number for reload
+#define ESAVEDBOARD 2 // Saved current board number
+//ESTATUS SAVED STATUS
+#define CLEAR 0
+#define SAVED 1
 
 // Board Constants 
 #define BLOCKSIZE 3
@@ -24,17 +35,18 @@ bool DEBUG = false;
 
 // displayMode Constants
 #define TITLESCREEN 0 
-#define COMPLETEBOARDHINT 1 // Gameplay - Normal Hints on Left
+#define GAMEINPLAY 1 // Gameplay - Normal Hints on Left
 #define DEBUGBOARD 2 // Gameplay - Hints for Onscreen Board (CURRENT)
 #define ROWVALUE 3 // Gameplay - uint16 Values on Screen
 #define COMPLETEVALUE 4 // Gameplay - uint16 Values of Completed Board
+#define PAUSEMENU 5
 byte displayMode = TITLESCREEN + DEBUG;
 
 // Board Stuff
-#define COMPLETE 0
-#define CURRENT 1
+#define COMPLETE 0 //  Complete Board, what the player is working toward
+#define CURRENT 1 // Current Board, board that is on the screen
 uint16_t Board[2][MAXBOARDSIZE];
-byte boardSelect, boardSize = 0;
+byte boardSize = 0;
 
 // Current Position of the Chisel
 byte xPos, yPos = 0;
@@ -44,17 +56,38 @@ byte currButtons, prevButtons;
 
 // For Quicker Movement
 byte repeatDelay = 0;
-// 
-byte giveupDelay = 0;
 
-// Complete Board Feedback
+// Title Screen Menu Stuff
+#define BOARDSELECT 0
+#define RANDOM 1
+#define DEBUGMODE 2 
+#define LOAD 3
+#define TITLESCREENITEMS 4
+const char titleScreenOptions[][12] = {
+  "Board #","Random","Debug Mode", "Load Saved"
+};
+byte titleSelect = 0;
+byte boardSelect = 0;
+bool savedBoard = false;
+byte savedBoardNumber = 0;
+
+// Pause Menu Stuff 
+#define CANCEL 0
+#define GIVEUP 1
+#define SAVE 2
+#define PAUSEMENUITEMS 3
+#define PAUSEDELAY 10
+const char pauseScreenOptions[][12] = {
+  "Back","Give Up","Save"
+};
+byte pauseDelay = 0;
+byte pauseSelect = 0;
+
 bool gamewon;
 
 void printBoard( byte boardToPrint ){
   gamewon = true;
-  // Iterate through each uint16
-
-  //Quick add for increasing blocksize for smaller boards
+  //Quick add for increasing blocksize for smaller boards dont look oh god
   byte embiggen = 0;
   if( boardSize <= 10 ){
     embiggen += 2;
@@ -99,7 +132,7 @@ void printBoard( byte boardToPrint ){
 
 }
 
-// Loads a board from PROGMEM
+// Loads a board from PROGMEM into Complete Board Board[COMPLETE]
 void loadBoard( byte toload ){
   // Load 16th value for boardsize
   boardSize = pgm_read_word_near( (toload * MAXBOARDSIZE) + LOADEDBOARD + 15 );
@@ -110,6 +143,7 @@ void loadBoard( byte toload ){
   }
 }
 
+//blargh dont look
 void drawDottedSquare( byte x, byte y, byte size ){
   for( byte i = 0; i < size; i++ ){
     byte pixelColor = WHITE;
@@ -124,6 +158,16 @@ void drawDottedSquare( byte x, byte y, byte size ){
   }
 }
 
+void resetGame(){
+  displayMode = TITLESCREEN + DEBUG;
+  gamewon = false;
+  xPos = 0;
+  yPos = 0;
+  for ( byte i = 0; i < MAXBOARDSIZE; i++ ){
+    Board[CURRENT][i] = 65535 - 32768;
+  }
+}
+
 void setup() {
   
   // Arduboy Setup
@@ -131,26 +175,32 @@ void setup() {
   arduboy.initRandomSeed();
   arduboy.setFrameRate(FRAMERATE);
 
-  // Game Reset
-  displayMode = TITLESCREEN + DEBUG;
-  gamewon = false;
-  xPos = 0;
-  yPos = 0;
-
-  //Fill Current Gameboard = New Game/Reset
-  for ( byte i = 0; i < MAXBOARDSIZE; i++ )
-  {
-    Board[CURRENT][i] = 65535 - 32768;
+  // Check EEPROM for Saved Game
+  byte eStatus = EEPROM.read(ESTATUS); // VVVVCCCC V=VERSION C=CLEAR/SAVE
+  //Version mismatch, board numbers may be different
+  if( ( eStatus >> 4) != VERSION ){
+    //Rewrite ESTATUS with new version number, clears save
+    eStatus = VERSION << 4;
+    EEPROM.write( ESTATUS, eStatus ); 
   }
+  //Check if there is a saved game
+  if( (eStatus & 0xF ) == SAVED ){
+    //Show there is a saved game to load later
+    savedBoard = true;
+    //Get Board Number for later
+    savedBoardNumber = EEPROM.read(EBOARDNUMBER);
+  }
+
+
+  // Game Reset
+  resetGame();
 
 }
 
 void loop() {
   
-  // Pause until next frame
+  //Wait until next frame, ready screen
   if (!(arduboy.nextFrame())) return;
-
-  // Clearing Screen
   arduboy.clear();
 
   // New Button Inputs
@@ -161,149 +211,271 @@ void loop() {
   if( prevButtons == currButtons && ( currButtons & ( LEFT_BUTTON + UP_BUTTON + RIGHT_BUTTON + DOWN_BUTTON )) ){
     repeatDelay++;
   }
-  // Release or change in buttons restarts delay
   else{
     repeatDelay = 0;
   }
-  // Give up delay, same as above, but for ending a board
-  if( prevButtons == currButtons && (currButtons & A_BUTTON) && (currButtons & B_BUTTON) ){
-    giveupDelay++;
-    //At half a second, give up
-    if( giveupDelay == 20 ){
-      // Give up and show complete board
-      for( byte i = 0; i < boardSize; i++ ){
-        Board[CURRENT][i] = Board[COMPLETE][i];
-      }
+
+  // Menu Delay. Holding A + B opens in game menu
+  if( displayMode > TITLESCREEN && prevButtons == currButtons && (currButtons & LEFT_BUTTON) && (currButtons & RIGHT_BUTTON) ){
+    pauseDelay++;
+    if( pauseDelay >= PAUSEDELAY ){
+      pauseDelay = 0;
+      displayMode = PAUSEMENU;
     }
   }
   else{
-    giveupDelay = 0;
+    pauseDelay = 0;
   }
   
   // Checks Inputs only if Inputs change, or repeatdelay exceeds max
   if( ( currButtons != prevButtons || repeatDelay > REPEATDELAY ) ){
 
-    // Moving the Cursor // Selecting Board
+    // D-PAD UP
     if( currButtons & UP_BUTTON ){
+      // Moving Chisel Up
       if(  displayMode > TITLESCREEN && yPos > 0){
         yPos--;
       }
+      // Pause Menu
+      if( displayMode == PAUSEMENU ){
+        pauseSelect--;
+        if( pauseSelect > PAUSEMENUITEMS ){
+          pauseSelect = PAUSEMENUITEMS - 1;
+        }
+      }
+
+      if( displayMode == TITLESCREEN ){
+        titleSelect--;
+        if( titleSelect > TITLESCREENITEMS ){
+          titleSelect = TITLESCREENITEMS - 1;
+        }
+      }
     }
+
+    //D-PAD DOWN
     if( currButtons & DOWN_BUTTON ){
+      // Moving Chisel Down
       if(  displayMode > TITLESCREEN && !(yPos >= boardSize - 1) ){
         yPos++;
       }
+      // Pause Menu
+      if( displayMode == PAUSEMENU ){
+        pauseSelect++;
+        pauseSelect = pauseSelect % PAUSEMENUITEMS;
+      }
+      if( displayMode == TITLESCREEN ){
+        titleSelect++;
+        titleSelect = titleSelect % TITLESCREENITEMS;
+      }
     }
+
+    //D-PAD LEFT
     if( currButtons & LEFT_BUTTON ){
+      // Moving Chisel Left
       if(  displayMode > TITLESCREEN && xPos > 0 ){
         xPos --;
       }
-
-      if( boardSelect > 0 && displayMode == TITLESCREEN ){
+      // Selecting board
+      if( displayMode == TITLESCREEN && titleSelect == BOARDSELECT ){
         boardSelect--;
+        if( boardSelect > NUMBEROFBOARDS ){
+          boardSelect = NUMBEROFBOARDS - 1;
+        }
       }
 
     }
+
+    //D-PAD RIGHT
     if( currButtons & RIGHT_BUTTON ){
+      // Moving Chisel Right
       if(  displayMode > TITLESCREEN && !(xPos >= boardSize - 1) ){
         xPos ++;
       }
-
-      if( boardSelect < NUMBEROFBOARDS  && displayMode == TITLESCREEN ){
+      // Title Select
+      if( displayMode == TITLESCREEN && titleSelect == BOARDSELECT ){
         boardSelect++;
+        boardSelect = boardSelect % NUMBEROFBOARDS;
       }
     }
 
-    //Pressing Left and Right together will change current screen in debug mode
-    if( currButtons & LEFT_BUTTON && currButtons & RIGHT_BUTTON && DEBUG ){
-      
-      displayMode++;
-      displayMode = displayMode % 5;
-      
-    }
-
-    // Flipping piece of the Current Game Board with A/B
+    // LEFT FACE BUTTON
     if( currButtons & A_BUTTON ){
       if( displayMode > TITLESCREEN ){
         //Clears Bit xPos in uint16 yPos
         Board[CURRENT][yPos] &= ~( 1 << xPos );
       }
     }
+    // RIGHT FACE BUTTON
     if( currButtons & B_BUTTON ){
       if( displayMode > TITLESCREEN ){
         //Sets Bit xPos in uint16 yPos
         Board[CURRENT][yPos] |= ( 1 << xPos );
       }
-
-
-
     }
 
-    if( (currButtons & A_BUTTON || currButtons & B_BUTTON) ){
-      
-      if( displayMode == TITLESCREEN ){
+    //DEBUG STUFF
+    //Pressing Left and Right together will change current screen in debug mode
+    if( currButtons & LEFT_BUTTON && currButtons & RIGHT_BUTTON && DEBUG ){
+      displayMode++;
+      displayMode = displayMode % 5;
+    }
 
+    // EITHER FACE BUTTON IS PRESSED and nothing held down
+    if( prevButtons == 0 && (currButtons & A_BUTTON || currButtons & B_BUTTON) ){
+      
+      // 
+      if( displayMode == TITLESCREEN ){
         //DEBUG Stuff
-        if( boardSelect == NUMBEROFBOARDS ){
+        if( titleSelect == DEBUGMODE ){
           DEBUG = true;
         }
-
-        //Load Selected board
-        else{
+        if( titleSelect == RANDOM ){
+          xPos = 0;
+          yPos = 0;
+          byte randomBoard = rand() % NUMBEROFBOARDS;
+          loadBoard( randomBoard );
+          displayMode++;
+        }
+        if( titleSelect == BOARDSELECT ){
           xPos = 0;
           yPos = 0;
           loadBoard( boardSelect );
-          // Going to Normal Gameplay
           displayMode++;
-        } 
-      }
-
-      if( gamewon && prevButtons == 0 ) {
-
-        // Game Reset
-        displayMode = TITLESCREEN + DEBUG;
-        gamewon = false;
-        xPos = 0;
-        yPos = 0;
-        //Fill Current Gameboard = New Game/Reset
-        for ( byte i = 0; i < MAXBOARDSIZE; i++ )
-        {
-          Board[CURRENT][i] = 65535 - 32768;
         }
-        //setup();
+        if( titleSelect == LOAD && savedBoard ){
+
+          // Load Board from EEPROM
+          for( int bytenum = 0; bytenum < 16 * 2; bytenum += 2){
+            //Load from EEPROM
+            byte upperbyte = EEPROM.read(ESAVEDBOARD + bytenum);
+            byte lowerbyte = EEPROM.read(ESAVEDBOARD + bytenum + 1);
+            //Combine two byte 16 bit num
+            uint16_t rowvalue = upperbyte;
+            rowvalue = ( rowvalue << 8 ) | lowerbyte;
+            //Add to currentBoard
+            Board[CURRENT][ bytenum / 2 ] = rowvalue;
+          }
+          xPos = 0;
+          yPos = 0;
+          boardSelect = savedBoardNumber;
+          loadBoard(boardSelect);
+          displayMode++;
+
+        }
+
       }
 
-    }
+      if( displayMode == PAUSEMENU ){
+        //Giveup and fill board
+        if( pauseSelect == GIVEUP ){
+          for( byte i = 0; i < boardSize; i++ ){
+            Board[CURRENT][i] = Board[COMPLETE][i];
+          }
+          displayMode = GAMEINPLAY;
+        }
+        //Cancel and return to game
+        if( pauseSelect == CANCEL ){
+          displayMode = GAMEINPLAY;
+        }
+        //Save Board to EEPROM and go to TITLESCREEN
+        if( pauseSelect == SAVE ){
+          displayMode = TITLESCREEN;
 
+          //Save Current Board to EEPROM to load later
+          for( int bytenum = 0; bytenum < 16 * 2; bytenum+= 2){
+            //Get Board Value
+            uint16_t rowvalue = Board[CURRENT][ bytenum / 2 ];
+            //Break into two bytes for EEPROM
+            byte upperbyte = rowvalue >> 8;
+            byte lowerbyte = rowvalue & 0xFF;
+            //Save into EEPROM
+            EEPROM.write( ESAVEDBOARD + bytenum, upperbyte);
+            EEPROM.write( ESAVEDBOARD + bytenum + 1, lowerbyte);
+          }
+
+          // Write ESTATUS and show a SAVED status
+          byte eStatus = (VERSION << 4) | SAVED;
+          EEPROM.write(ESTATUS, eStatus);
+          // Write EBOARDNUMBER with current selected board
+          EEPROM.write(EBOARDNUMBER, boardSelect);
+
+          setup();
+
+        }
+      }
+
+      //Reset and go to title screen on button press
+      if( gamewon && prevButtons == 0 ) {
+        if(savedBoard){
+          byte eStatus = (VERSION << 4);
+          EEPROM.write(ESTATUS, eStatus);
+        }
+        resetGame();
+      }
+    }
   }
 
   //Determines what to display
   switch (displayMode){
 
     case TITLESCREEN:
-
-      //Print Title of Game
-      arduboy.setCursor(38,16);
-      arduboy.print("ARDUCROSS");
       //Debug Indicator
       if( DEBUG ){
         arduboy.setCursor( 24, 8);
         arduboy.print("DEBUG");
       }
-      // Board Select or Enter Debug
-      arduboy.setCursor(60,32);
-      if( boardSelect == NUMBEROFBOARDS )
-        arduboy.print("DEBUG");
-      else
-        arduboy.print(boardSelect);
+      //Print Title of Game
+      arduboy.setCursor(38,16);
+      arduboy.print("ARDUCROSS");
+
+      //Print menu items
+      for( int i = 0; i < TITLESCREENITEMS; i++ ){
+        arduboy.setCursor( 8, 32 + ( i * 8 ));
+        arduboy.print(titleScreenOptions[i]);
+      }
+
+      //Show current board selection
+      if( titleSelect == BOARDSELECT ){
+        arduboy.setCursor( 56, 32);
+        arduboy.print( boardSelect );
+      }
+
+      //Current Selection
+      arduboy.setCursor(0, 32 + ( titleSelect * 8 ));
+      arduboy.print("-");
+
+      //Show Saved Game?
+      arduboy.setCursor( 72, 32 + ( 3 * 8 ) ) ;
+      if( savedBoard ){
+        arduboy.print(savedBoardNumber);
+      }
+      else{
+        arduboy.print("EMPTY"); 
+      }
 
       break;
+
+    case PAUSEMENU:
+
+      //Pause menu title
+      arduboy.setCursor(38,16);
+      arduboy.print("PAUSED");
+      //Print Menu Items
+      for( int i = 0; i < PAUSEMENUITEMS; i++ ){
+        arduboy.setCursor( 8, 32 + ( i * 8 ));
+        arduboy.print(pauseScreenOptions[i]);
+      }
+      //Current Selection
+      arduboy.setCursor(0, 32 + ( pauseSelect * 8 ));
+      arduboy.print("-");
+
+    break;
 
     //Game in Progress, Show necessary values
     case DEBUGBOARD:
     case ROWVALUE:
     case COMPLETEVALUE:
-    case COMPLETEBOARDHINT:
+    case GAMEINPLAY:
 
       //DEBUG Cursor Location
       if( DEBUG && !( displayMode == ROWVALUE || displayMode == COMPLETEVALUE )){
@@ -318,7 +490,7 @@ void loop() {
         arduboy.print(yPos);
       }
 
-      // Feedback on Board Comolete
+      // Feedback on Board Complete
       if( gamewon ){
         arduboy.setCursor( 8, 16);
         arduboy.print("OK!");
@@ -416,7 +588,7 @@ void loop() {
         }
       }
 
-      byte SHOWCOMPLETEDEBUG = 0;
+      int SHOWCOMPLETEDEBUG = 0;
       if( displayMode == COMPLETEVALUE ){
         SHOWCOMPLETEDEBUG = 1;
       }

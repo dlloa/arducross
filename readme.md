@@ -1,5 +1,5 @@
 <h1>Arducross - Picross for Arduboy</h1>
-Very simple Picross clone. Currently only has 8 boards. It's my first Arduboy project and my first C project in a while so any feedback and suggestions will be greatly appreciated.</br>
+Very simple Picross clone. Currently only has 16 boards.</br>
 
 https://community.arduboy.com/t/wip-arducross-picross-for-arduboy/3928
 
@@ -7,18 +7,27 @@ https://community.arduboy.com/t/wip-arducross-picross-for-arduboy/3928
 http://www.thonky.com/picross/
 
 **Controls - Title Screen** </br>
+Up/Down: Change Option </br>
 Left/Right: Select board to play </br>
-A/B: Starts game with selected board (Debug turns on Debug Mode)</br>
-
-0: 5x5 Easy </br>
-1: 10x10 Medium </br>
-2: 15x15 Hard </br>
+A/B: Select Option </br>
 
 **Controls - Gameplay** </br>
 D-Pad: Moves Chisel </br>
 A: Clears Block </br>
 B: Sets Block </br>
-A+B 2 Seconds: Give up </br>
+Left+Right 2 Seconds: Pause Menu </br>
+
+**Controls - Pause Screen** </br>
+D-Pad: Change Option
+A/B: Select Option
+
+** SAVING **
+Pausing and Saving is now an option.
+Saving WILL OVERWRITE the first 34 BYTES from the EEPROM.
+
+BYTE 1: Version and Status (VVVVSSSS)
+BYTE 2: Board Number
+BYTE 3-34: Board Status
 
 OK! is displayed when you complete the board. Pressing A/B after restarts the game.
 

@@ -22,12 +22,12 @@ D-Pad: Change Option
 A/B: Select Option
 
 ** SAVING **
-Pausing and Saving is now an option.
-Saving WILL OVERWRITE the first 34 BYTES from the EEPROM.
+Pausing and Saving is now an option. </br>
+Saving WILL OVERWRITE the first 34 BYTES from the EEPROM. </br>
 
-BYTE 1: Version and Status (VVVVSSSS)
-BYTE 2: Board Number
-BYTE 3-34: Board Status
+BYTE 1: Version and Status </br>
+BYTE 2: Board Number </br>
+BYTE 3-34: Board Status </br>
 
 OK! is displayed when you complete the board. Pressing A/B after restarts the game.
 

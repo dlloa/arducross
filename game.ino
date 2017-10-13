@@ -176,19 +176,19 @@ void setup() {
   arduboy.setFrameRate(FRAMERATE);
 
   // Check EEPROM for Saved Game
-  byte eStatus = EEPROM.read(ESTATUS); // VVVVCCCC V=VERSION C=CLEAR/SAVE
+  byte eStatus = EEPROM.read(ESTATUS + EEPROM_STORAGE_SPACE_START); // VVVVCCCC V=VERSION C=CLEAR/SAVE
   //Version mismatch, board numbers may be different
   if( ( eStatus >> 4) != VERSION ){
     //Rewrite ESTATUS with new version number, clears save
     eStatus = VERSION << 4;
-    EEPROM.write( ESTATUS, eStatus ); 
+    EEPROM.update( ESTATUS+ EEPROM_STORAGE_SPACE_START, eStatus ); 
   }
   //Check if there is a saved game
   if( (eStatus & 0xF ) == SAVED ){
     //Show there is a saved game to load later
     savedBoard = true;
     //Get Board Number for later
-    savedBoardNumber = EEPROM.read(EBOARDNUMBER);
+    savedBoardNumber = EEPROM.read(EBOARDNUMBER + EEPROM_STORAGE_SPACE_START);
   }
 
 
@@ -347,8 +347,8 @@ void loop() {
           // Load Board from EEPROM
           for( int bytenum = 0; bytenum < 16 * 2; bytenum += 2){
             //Load from EEPROM
-            byte upperbyte = EEPROM.read(ESAVEDBOARD + bytenum);
-            byte lowerbyte = EEPROM.read(ESAVEDBOARD + bytenum + 1);
+            byte upperbyte = EEPROM.read(ESAVEDBOARD + EEPROM_STORAGE_SPACE_START + bytenum);
+            byte lowerbyte = EEPROM.read(ESAVEDBOARD + EEPROM_STORAGE_SPACE_START + bytenum + 1);
             //Combine two byte 16 bit num
             uint16_t rowvalue = upperbyte;
             rowvalue = ( rowvalue << 8 ) | lowerbyte;
@@ -389,15 +389,15 @@ void loop() {
             byte upperbyte = rowvalue >> 8;
             byte lowerbyte = rowvalue & 0xFF;
             //Save into EEPROM
-            EEPROM.write( ESAVEDBOARD + bytenum, upperbyte);
-            EEPROM.write( ESAVEDBOARD + bytenum + 1, lowerbyte);
+            EEPROM.update( ESAVEDBOARD + EEPROM_STORAGE_SPACE_START + bytenum, upperbyte);
+            EEPROM.update( ESAVEDBOARD + EEPROM_STORAGE_SPACE_START + bytenum + 1, lowerbyte);
           }
 
           // Write ESTATUS and show a SAVED status
           byte eStatus = (VERSION << 4) | SAVED;
-          EEPROM.write(ESTATUS, eStatus);
+          EEPROM.update(ESTATUS + EEPROM_STORAGE_SPACE_START, eStatus);
           // Write EBOARDNUMBER with current selected board
-          EEPROM.write(EBOARDNUMBER, boardSelect);
+          EEPROM.update(EBOARDNUMBER + EEPROM_STORAGE_SPACE_START, boardSelect);
 
           setup();
 
@@ -408,7 +408,7 @@ void loop() {
       if( gamewon && prevButtons == 0 ) {
         if(savedBoard){
           byte eStatus = (VERSION << 4);
-          EEPROM.write(ESTATUS, eStatus);
+          EEPROM.update(ESTATUS + EEPROM_STORAGE_SPACE_START, eStatus);
         }
         resetGame();
       }

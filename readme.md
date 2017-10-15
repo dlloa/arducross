@@ -1,5 +1,5 @@
 <h1>Arducross - Picross for Arduboy</h1>
-Very simple Picross clone. Currently only has 16 boards.</br>
+Very simple Picross clone. Currently only has 22 boards.</br>
 
 https://community.arduboy.com/t/wip-arducross-picross-for-arduboy/3928
 
@@ -23,11 +23,11 @@ A/B: Select Option
 
 ** SAVING **
 Pausing and Saving is now an option. </br>
-Saving WILL OVERWRITE the first 34 BYTES from the EEPROM. </br>
+Saving WILL OVERWRITE the first 34 BYTES from EEPROM_STORAGE_SPACE_START. </br>
 
-BYTE 1: Version and Status </br>
-BYTE 2: Board Number </br>
-BYTE 3-34: Board Status </br>
+BYTE EEPROM_STORAGE_SPACE_START + 1: Version and Status </br>
+BYTE EEPROM_STORAGE_SPACE_START + 2: Board Number </br>
+BYTE EEPROM_STORAGE_SPACE_START + 3-34: Board Status </br>
 
 OK! is displayed when you complete the board. Pressing A/B after restarts the game.
 

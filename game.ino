@@ -10,7 +10,7 @@
 
 // + Pause Menu
 // + Give Up 
-// - Timer
+// + Timer
 
 // Arduboy Stuff
 Arduboy2 arduboy;
@@ -18,11 +18,13 @@ Arduboy2 arduboy;
 bool DEBUG = false;
 
 //Arducross Version
-#define VERSION 1
+#define VERSION 3 // change whenever you add new boards so that shit doesnt fuck up
 //EEPROM Addresses for Picross
 #define ESTATUS 0 // Byte for VERSION and SAVED STATUS : VVVVCCCC V=VERSION C=CLEAR/SAVE
 #define EBOARDNUMBER 1 // Byte for Board Number for reload
-#define ESAVEDBOARD 2 // Saved current board number
+#define EBOARDMINUTES 2 // Byte for minutesTimer
+#define EBOARDSECONDS 3 // Byte for secondsTimer
+#define ESAVEDBOARD 4 // Saved current board number
 //ESTATUS SAVED STATUS
 #define CLEAR 0
 #define SAVED 1
@@ -50,6 +52,10 @@ byte boardSize = 0;
 
 // Current Position of the Chisel
 byte xPos, yPos = 0;
+
+//Time Stuff
+byte minutesTimer, secondsTimer = 0;
+unsigned long currentMil, lastMil, difMil = 0;
 
 // Button States
 byte currButtons, prevButtons;
@@ -141,6 +147,9 @@ void loadBoard( byte toload ){
     // PROGMEM read with pgm_read_word_near( )
     Board[COMPLETE][i] = pgm_read_word_near( (toload * MAXBOARDSIZE ) + LOADEDBOARD + i );
   }
+
+  minutesTimer = 0;
+  secondsTimer = 0;
 }
 
 //blargh dont look
@@ -161,8 +170,13 @@ void drawDottedSquare( byte x, byte y, byte size ){
 void resetGame(){
   displayMode = TITLESCREEN + DEBUG;
   gamewon = false;
+
   xPos = 0;
   yPos = 0;
+
+  minutesTimer = 0;
+  secondsTimer = 0;
+
   for ( byte i = 0; i < MAXBOARDSIZE; i++ ){
     Board[CURRENT][i] = 65535 - 32768;
   }
@@ -174,6 +188,8 @@ void setup() {
   arduboy.begin();
   arduboy.initRandomSeed();
   arduboy.setFrameRate(FRAMERATE);
+
+
 
   // Check EEPROM for Saved Game
   byte eStatus = EEPROM.read(ESTATUS + EEPROM_STORAGE_SPACE_START); // VVVVCCCC V=VERSION C=CLEAR/SAVE
@@ -202,6 +218,23 @@ void loop() {
   //Wait until next frame, ready screen
   if (!(arduboy.nextFrame())) return;
   arduboy.clear();
+
+  lastMil = currentMil; // Save last time
+  currentMil = millis(); // Get new time
+
+  //Only update if not paused
+  if( displayMode != PAUSEMENU && !gamewon){
+    //Update Times
+    difMil += currentMil - lastMil; // Difference in time, time for last frame
+    if( difMil > 1000 ){
+      difMil -= 1000;
+      secondsTimer += 1;
+      if( secondsTimer == 60 ){
+        secondsTimer = 0;
+        minutesTimer += 1;
+      }
+    }
+  }
 
   // New Button Inputs
   prevButtons = currButtons;
@@ -317,7 +350,7 @@ void loop() {
     //Pressing Left and Right together will change current screen in debug mode
     if( currButtons & LEFT_BUTTON && currButtons & RIGHT_BUTTON && DEBUG ){
       displayMode++;
-      displayMode = displayMode % 5;
+      displayMode = displayMode % 6;
     }
 
     // EITHER FACE BUTTON IS PRESSED and nothing held down
@@ -332,8 +365,8 @@ void loop() {
         if( titleSelect == RANDOM ){
           xPos = 0;
           yPos = 0;
-          byte randomBoard = rand() % NUMBEROFBOARDS;
-          loadBoard( randomBoard );
+          boardSelect = rand() % NUMBEROFBOARDS;
+          loadBoard( boardSelect );
           displayMode++;
         }
         if( titleSelect == BOARDSELECT ){
@@ -359,6 +392,10 @@ void loop() {
           yPos = 0;
           boardSelect = savedBoardNumber;
           loadBoard(boardSelect);
+
+          minutesTimer = EEPROM.read(EBOARDMINUTES + EEPROM_STORAGE_SPACE_START);
+          secondsTimer = EEPROM.read(EBOARDSECONDS + EEPROM_STORAGE_SPACE_START);
+
           displayMode++;
 
         }
@@ -399,6 +436,10 @@ void loop() {
           // Write EBOARDNUMBER with current selected board
           EEPROM.update(EBOARDNUMBER + EEPROM_STORAGE_SPACE_START, boardSelect);
 
+          //Save time for loading
+          EEPROM.update(EBOARDMINUTES + EEPROM_STORAGE_SPACE_START, minutesTimer);
+          EEPROM.update(EBOARDSECONDS + EEPROM_STORAGE_SPACE_START, secondsTimer);
+
           setup();
 
         }
@@ -436,8 +477,25 @@ void loop() {
 
       //Show current board selection
       if( titleSelect == BOARDSELECT ){
+
+        byte tempboardSize = pgm_read_word_near( (boardSelect * MAXBOARDSIZE) + LOADEDBOARD + 15 );
+  
         arduboy.setCursor( 56, 32);
         arduboy.print( boardSelect );
+
+        arduboy.setCursor( 80,32 );
+        if( tempboardSize < 10){
+          arduboy.print(" ");
+          arduboy.setCursor(88,32);
+        }
+        arduboy.print(tempboardSize);
+
+        arduboy.setCursor( 96,32 );
+        arduboy.print("x");
+
+        arduboy.setCursor( 104,32);
+
+        arduboy.print(tempboardSize);
       }
 
       //Current Selection
@@ -595,6 +653,24 @@ void loop() {
       printBoard( CURRENT - SHOWCOMPLETEDEBUG );
       break;
     
+  }
+
+  //Display Time Everywhere
+  if( !DEBUG && displayMode > TITLESCREEN ){
+    arduboy.setCursor(0, 0);
+    if( minutesTimer < 10 ){
+      arduboy.print("0");
+      arduboy.setCursor(8, 0);
+    }
+    arduboy.print(minutesTimer);
+    arduboy.setCursor(16, 0); 
+    arduboy.print(":");
+    arduboy.setCursor(24, 0);
+    if( secondsTimer < 10 ){
+      arduboy.print("0");
+      arduboy.setCursor( 32, 0);
+    }
+    arduboy.print(secondsTimer);
   }
 
   // Display everything printed

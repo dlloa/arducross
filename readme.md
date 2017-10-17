@@ -1,5 +1,5 @@
 <h1>Arducross - Picross for Arduboy</h1>
-Very simple Picross clone. Currently only has 22 boards.</br>
+Very simple Picross clone. Currently only has 31 boards.</br>
 
 https://community.arduboy.com/t/wip-arducross-picross-for-arduboy/3928
 

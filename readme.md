@@ -25,9 +25,11 @@ A/B: Select Option
 Pausing and Saving is now an option. </br>
 Saving WILL OVERWRITE the first 34 BYTES from EEPROM_STORAGE_SPACE_START. </br>
 
-BYTE EEPROM_STORAGE_SPACE_START + 1: Version and Status </br>
-BYTE EEPROM_STORAGE_SPACE_START + 2: Board Number </br>
-BYTE EEPROM_STORAGE_SPACE_START + 3-34: Board Status </br>
+BYTE EEPROM_STORAGE_SPACE_START + 0: Version and Status </br>
+BYTE EEPROM_STORAGE_SPACE_START + 1: Board Number </br>
+BYTE EEPROM_STORAGE_SPACE_START + 2: Board Minutes </br>
+BYTE EEPROM_STORAGE_SPACE_START + 3: Board Seconds </br>
+BYTE EEPROM_STORAGE_SPACE_START + 4 - 36: Saved Board Values </br>
 
 OK! is displayed when you complete the board. Pressing A/B after restarts the game.
 
